@@ -12,6 +12,8 @@ import { runMigrations } from '../../db/migrate';
 import { SqliteDeviceRepository } from '../../repositories/sqlite/SqliteDeviceRepository';
 import { SqliteIncidentRepository } from '../../repositories/sqlite/SqliteIncidentRepository';
 import { HeartbeatService } from '../../services/HeartbeatService';
+import { DeviceService } from '../../services/DeviceService';
+import { IncidentService } from '../../services/IncidentService';
 import { createDefaultIncidentPipeline } from '../../rules';
 import { NO_RENDER_THRESHOLD_SECONDS } from '../../domain/constants';
 import {
@@ -32,8 +34,10 @@ function buildTestApp(db: DatabaseSync): Application {
   const deviceRepo = new SqliteDeviceRepository(db);
   const incidentRepo = new SqliteIncidentRepository(db);
   const { ruleEngine, stepFactory } = createDefaultIncidentPipeline();
-  const service = new HeartbeatService(deviceRepo, incidentRepo, ruleEngine, stepFactory);
-  return createApp({ heartbeatService: service });
+  const heartbeatService = new HeartbeatService(deviceRepo, incidentRepo, ruleEngine, stepFactory);
+  const deviceService = new DeviceService(deviceRepo, incidentRepo);
+  const incidentService = new IncidentService(incidentRepo);
+  return createApp({ heartbeatService, deviceService, incidentService });
 }
 
 // clears all rows between tests so each test starts with a clean slate

@@ -4,9 +4,10 @@ it is the only place in the codebase allowed to run device sql queries.
 */
 
 import { DatabaseSync } from 'node:sqlite';
-import { IDeviceRepository } from '../IDeviceRepository';
+import { IDeviceRepository, DeviceListItem, DeviceListFilters } from '../IDeviceRepository';
 import { Device, DeviceTelemetry } from '../../domain/Device';
 import { DeviceStatus } from '../../domain/enums';
+import { PaginatedResult } from '../../domain/Pagination';
 
 // the shape of a raw row returned by node:sqlite for the devices table
 interface DeviceRow {
@@ -22,6 +23,21 @@ interface DeviceRow {
   firmware_version: string | null;
   created_at: number;
   updated_at: number;
+}
+
+// the shape of a summary row that includes the open incident count from a join
+interface DeviceListRow {
+  id: string;
+  venue_id: string;
+  label: string;
+  status: string;
+  last_heartbeat_at: number;
+  open_incident_count: number;
+}
+
+// a count-only row for pagination totals
+interface CountRow {
+  total: number;
 }
 
 // maps a raw sqlite row back to the domain Device type
@@ -43,6 +59,19 @@ function rowToDevice(row: DeviceRow): Device {
     telemetry,
     createdAt: new Date(row.created_at * 1000),
     updatedAt: new Date(row.updated_at * 1000),
+  };
+}
+
+// maps a summary row to the DeviceListItem shape
+function rowToListItem(row: DeviceListRow): DeviceListItem {
+  return {
+    id: row.id,
+    venueId: row.venue_id,
+    label: row.label,
+    status: row.status as DeviceStatus,
+    lastSeenAt: new Date(row.last_heartbeat_at * 1000),
+    // coerce to number in case sqlite returns bigint for aggregate result
+    openIncidentCount: Number(row.open_incident_count),
   };
 }
 
@@ -111,5 +140,48 @@ export class SqliteDeviceRepository implements IDeviceRepository {
       .all() as unknown as DeviceRow[];
 
     return rows.map(rowToDevice);
+  }
+
+  // returns a paginated list of devices with their open incident counts.
+  // null params use the "IS NULL OR ..." trick so one query covers all filter combos.
+  listWithFilters(filters: DeviceListFilters): PaginatedResult<DeviceListItem> {
+    const params = {
+      status: filters.status ?? null,
+      venueId: filters.venueId ?? null,
+      limit: filters.limit,
+      offset: filters.offset,
+    };
+
+    const rows = this.db.prepare(`
+      SELECT
+        d.id,
+        d.venue_id,
+        d.label,
+        d.status,
+        d.last_heartbeat_at,
+        COALESCE(SUM(CASE WHEN i.status = 'OPEN' THEN 1 ELSE 0 END), 0) AS open_incident_count
+      FROM devices d
+      LEFT JOIN incidents i ON i.device_id = d.id
+      WHERE (@status IS NULL OR d.status = @status)
+        AND (@venueId IS NULL OR d.venue_id = @venueId)
+      GROUP BY d.id
+      ORDER BY d.updated_at DESC
+      LIMIT @limit OFFSET @offset
+    `).all(params) as unknown as DeviceListRow[];
+
+    // separate count query so we can return total without loading all rows
+    const countRow = this.db.prepare(`
+      SELECT COUNT(*) AS total
+      FROM devices d
+      WHERE (@status IS NULL OR d.status = @status)
+        AND (@venueId IS NULL OR d.venue_id = @venueId)
+    `).get({ status: params.status, venueId: params.venueId }) as unknown as CountRow;
+
+    return {
+      items: rows.map(rowToListItem),
+      total: Number(countRow.total),
+      limit: filters.limit,
+      offset: filters.offset,
+    };
   }
 }

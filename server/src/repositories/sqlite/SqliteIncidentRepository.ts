@@ -4,9 +4,10 @@ context and troubleshooting steps are stored as json strings and parsed on read.
 */
 
 import { DatabaseSync } from 'node:sqlite';
-import { IIncidentRepository } from '../IIncidentRepository';
+import { IIncidentRepository, IncidentListFilters } from '../IIncidentRepository';
 import { Incident, TroubleshootingStep } from '../../domain/Incident';
 import { IncidentType, SeverityLevel, IncidentStatus } from '../../domain/enums';
+import { PaginatedResult } from '../../domain/Pagination';
 
 // the shape of a raw row returned by node:sqlite for the incidents table
 interface IncidentRow {
@@ -22,6 +23,11 @@ interface IncidentRow {
   detected_at: number;
   resolved_at: number | null;
   updated_at: number;
+}
+
+// a count-only row for pagination totals
+interface CountRow {
+  total: number;
 }
 
 // maps a raw sqlite row back to the domain Incident type
@@ -62,6 +68,14 @@ export class SqliteIncidentRepository implements IIncidentRepository {
     const row = this.db
       .prepare(`SELECT * FROM incidents WHERE device_id = ? AND type = ? AND status = 'OPEN' LIMIT 1`)
       .get(deviceId, type) as unknown as IncidentRow | undefined;
+
+    return row ? rowToIncident(row) : null;
+  }
+
+  findById(id: string): Incident | null {
+    const row = this.db
+      .prepare('SELECT * FROM incidents WHERE id = ?')
+      .get(id) as unknown as IncidentRow | undefined;
 
     return row ? rowToIncident(row) : null;
   }
@@ -108,5 +122,41 @@ export class SqliteIncidentRepository implements IIncidentRepository {
     this.db
       .prepare('UPDATE incidents SET updated_at = ? WHERE id = ?')
       .run(Math.floor(updatedAt.getTime() / 1000), id);
+  }
+
+  // returns a paginated, optionally filtered list of incidents.
+  // when onlyActive is true only open incidents are returned.
+  listWithFilters(filters: IncidentListFilters): PaginatedResult<Incident> {
+    // pass a string or null so the IS NULL trick works in sql
+    const statusFilter = filters.onlyActive ? 'OPEN' : null;
+    const deviceId = filters.deviceId ?? null;
+
+    const params = {
+      statusFilter,
+      deviceId,
+      limit: filters.limit,
+      offset: filters.offset,
+    };
+
+    const rows = this.db.prepare(`
+      SELECT * FROM incidents
+      WHERE (@statusFilter IS NULL OR status = @statusFilter)
+        AND (@deviceId IS NULL OR device_id = @deviceId)
+      ORDER BY detected_at DESC
+      LIMIT @limit OFFSET @offset
+    `).all(params) as unknown as IncidentRow[];
+
+    const countRow = this.db.prepare(`
+      SELECT COUNT(*) AS total FROM incidents
+      WHERE (@statusFilter IS NULL OR status = @statusFilter)
+        AND (@deviceId IS NULL OR device_id = @deviceId)
+    `).get({ statusFilter, deviceId }) as unknown as CountRow;
+
+    return {
+      items: rows.map(rowToIncident),
+      total: Number(countRow.total),
+      limit: filters.limit,
+      offset: filters.offset,
+    };
   }
 }
