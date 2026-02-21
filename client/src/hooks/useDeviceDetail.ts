@@ -26,14 +26,8 @@ export function useDeviceDetail(deviceId: string | null): DeviceDetailState {
     setLoading(deviceId !== null);
   }, [deviceId]);
 
-    // skip polling when nothing is selected
-      setDetail(null);
-    // only show loading spinner on the very first load, not on background polls
-    setLoading((prev) => (detail === null ? true : prev));
-
-      setLoading(false);
-      setError(null);
   const fetch = useCallback(async () => {
+    // skip polling when nothing is selected
     if (!deviceId) {
       return;
     }
