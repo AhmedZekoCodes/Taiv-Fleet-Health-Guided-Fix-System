@@ -3,7 +3,7 @@ these tests verify that the offline rule fires only when heartbeat silence excee
 */
 
 import { OfflineRule } from '../../rules/OfflineRule';
-import { IncidentType } from '../../domain/enums';
+import { IncidentType, SeverityLevel } from '../../domain/enums';
 import { OFFLINE_THRESHOLD_SECONDS } from '../../domain/constants';
 import { makeDevice } from '../helpers/deviceFactory';
 
@@ -55,6 +55,7 @@ describe('OfflineRule', () => {
     const device = makeDevice();
     const match = {
       type: IncidentType.OFFLINE,
+      severity: SeverityLevel.CRITICAL,
       summary: 'test',
       context: {},
     };

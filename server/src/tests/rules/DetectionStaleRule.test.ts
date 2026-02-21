@@ -3,7 +3,7 @@ these tests verify the detection stale rule fires when commercial break detectio
 */
 
 import { DetectionStaleRule } from '../../rules/DetectionStaleRule';
-import { IncidentType } from '../../domain/enums';
+import { IncidentType, SeverityLevel } from '../../domain/enums';
 import {
   DETECTION_STALE_THRESHOLD_SECONDS,
   OFFLINE_THRESHOLD_SECONDS,
@@ -82,7 +82,7 @@ describe('DetectionStaleRule', () => {
 
   it('generates steps in sequential order', () => {
     const device = makeDevice();
-    const match = { type: IncidentType.DETECTION_STALE, summary: '', context: {} };
+    const match = { type: IncidentType.DETECTION_STALE, severity: SeverityLevel.MEDIUM, summary: '', context: {} };
     const steps = rule.buildTroubleshootingSteps(match, device);
     steps.forEach((step, i) => expect(step.order).toBe(i + 1));
   });

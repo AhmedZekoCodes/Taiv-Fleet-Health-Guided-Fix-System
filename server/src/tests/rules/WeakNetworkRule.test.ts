@@ -3,7 +3,7 @@ these tests check that the weak network rule fires on bad signal values and stay
 */
 
 import { WeakNetworkRule } from '../../rules/WeakNetworkRule';
-import { IncidentType } from '../../domain/enums';
+import { IncidentType, SeverityLevel } from '../../domain/enums';
 import {
   WEAK_NETWORK_RSSI_THRESHOLD_DBM,
   WEAK_NETWORK_SIGNAL_PERCENT_THRESHOLD,
@@ -98,7 +98,7 @@ describe('WeakNetworkRule', () => {
 
   it('generates steps in sequential order', () => {
     const device = makeDevice();
-    const match = { type: IncidentType.WEAK_NETWORK, summary: '', context: {} };
+    const match = { type: IncidentType.WEAK_NETWORK, severity: SeverityLevel.LOW, summary: '', context: {} };
     const steps = rule.buildTroubleshootingSteps(match, device);
     steps.forEach((step, i) => expect(step.order).toBe(i + 1));
   });

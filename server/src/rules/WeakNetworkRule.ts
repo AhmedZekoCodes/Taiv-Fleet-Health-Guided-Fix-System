@@ -15,6 +15,7 @@ import {
 
 export class WeakNetworkRule implements IncidentRule {
   readonly type = IncidentType.WEAK_NETWORK;
+  readonly severity = SeverityLevel.LOW;
 
   evaluate(ctx: RuleEvaluationContext): RuleMatch | null {
     const { device, nowSeconds } = ctx;
@@ -45,6 +46,7 @@ export class WeakNetworkRule implements IncidentRule {
 
     return {
       type: this.type,
+      severity: this.severity,
       summary: `Device "${device.label}" has a weak network signal (${signalStrengthPercent ?? 'N/A'}% / ${rssiDbm ?? 'N/A'} dBm).`,
       context: {
         signalStrengthPercent,
@@ -93,5 +95,4 @@ export class WeakNetworkRule implements IncidentRule {
     ];
   }
 
-  static readonly severity = SeverityLevel.LOW;
 }

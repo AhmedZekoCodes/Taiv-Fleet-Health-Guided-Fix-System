@@ -14,6 +14,7 @@ import {
 
 export class DetectionStaleRule implements IncidentRule {
   readonly type = IncidentType.DETECTION_STALE;
+  readonly severity = SeverityLevel.MEDIUM;
 
   evaluate(ctx: RuleEvaluationContext): RuleMatch | null {
     const { device, nowSeconds } = ctx;
@@ -30,6 +31,7 @@ export class DetectionStaleRule implements IncidentRule {
     if (lastDetectionAt === null) {
       return {
         type: this.type,
+        severity: this.severity,
         summary: `Device "${device.label}" has never reported a commercial detection event.`,
         context: {
           lastDetectionAt: null,
@@ -46,6 +48,7 @@ export class DetectionStaleRule implements IncidentRule {
 
     return {
       type: this.type,
+      severity: this.severity,
       summary: `Device "${device.label}" has not detected a commercial break in ${secondsSinceDetection} seconds.`,
       context: {
         lastDetectionAt,
@@ -93,5 +96,4 @@ export class DetectionStaleRule implements IncidentRule {
     ];
   }
 
-  static readonly severity = SeverityLevel.MEDIUM;
 }

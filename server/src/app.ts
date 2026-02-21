@@ -5,8 +5,15 @@ keeping it separate from server.ts means tests can import the app without bindin
 
 import express, { Application, Request, Response, NextFunction } from 'express';
 import morgan from 'morgan';
+import { HeartbeatService } from './services/HeartbeatService';
+import { createHeartbeatRouter } from './routes/heartbeatRouter';
 
-export function createApp(): Application {
+// all service dependencies the app needs to operate
+export interface AppDependencies {
+  heartbeatService: HeartbeatService;
+}
+
+export function createApp(deps: AppDependencies): Application {
   const app = express();
 
   // parse incoming json bodies
@@ -20,9 +27,8 @@ export function createApp(): Application {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // routes will be mounted here in step 2
-  // app.use('/api/v1/devices', deviceRouter);
-  // app.use('/api/v1/incidents', incidentRouter);
+  // mount the heartbeat route under /api
+  app.use('/api', createHeartbeatRouter(deps.heartbeatService));
 
   // catch-all for any route that does not exist
   app.use((_req: Request, res: Response) => {

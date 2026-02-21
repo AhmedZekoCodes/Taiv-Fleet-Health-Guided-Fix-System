@@ -11,6 +11,7 @@ import { NO_RENDER_THRESHOLD_SECONDS, OFFLINE_THRESHOLD_SECONDS } from '../domai
 
 export class NoRenderRule implements IncidentRule {
   readonly type = IncidentType.NO_RENDER;
+  readonly severity = SeverityLevel.HIGH;
 
   evaluate(ctx: RuleEvaluationContext): RuleMatch | null {
     const { device, nowSeconds } = ctx;
@@ -26,6 +27,7 @@ export class NoRenderRule implements IncidentRule {
     if (lastRenderAt === null) {
       return {
         type: this.type,
+        severity: this.severity,
         summary: `Device "${device.label}" has never reported a render event.`,
         context: {
           lastRenderAt: null,
@@ -42,6 +44,7 @@ export class NoRenderRule implements IncidentRule {
 
     return {
       type: this.type,
+      severity: this.severity,
       summary: `Device "${device.label}" has not rendered any content in ${secondsSinceRender} seconds.`,
       context: {
         lastRenderAt,
@@ -89,5 +92,4 @@ export class NoRenderRule implements IncidentRule {
     ];
   }
 
-  static readonly severity = SeverityLevel.HIGH;
 }

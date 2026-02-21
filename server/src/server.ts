@@ -1,14 +1,31 @@
 /*
 this is the entry point that starts the http server.
-it binds the express app to a port and handles graceful shutdown.
+it creates all dependencies, wires them together, then binds a port.
 */
 
+import path from 'path';
 import { createApp } from './app';
-import { closeDatabase } from './db/connection';
+import { openDatabase, closeDatabase } from './db/sqlite';
+import { runMigrations } from './db/migrate';
+import { SqliteDeviceRepository } from './repositories/sqlite/SqliteDeviceRepository';
+import { SqliteIncidentRepository } from './repositories/sqlite/SqliteIncidentRepository';
+import { HeartbeatService } from './services/HeartbeatService';
+import { createDefaultIncidentPipeline } from './rules';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
+const DB_PATH = path.resolve(__dirname, '../data/dev.db');
 
-const app = createApp();
+// open and migrate the database
+const db = openDatabase(DB_PATH);
+runMigrations(db);
+
+// wire all dependencies bottom-up: db → repos → pipeline → service → app
+const deviceRepo = new SqliteDeviceRepository(db);
+const incidentRepo = new SqliteIncidentRepository(db);
+const { ruleEngine, stepFactory } = createDefaultIncidentPipeline();
+const heartbeatService = new HeartbeatService(deviceRepo, incidentRepo, ruleEngine, stepFactory);
+
+const app = createApp({ heartbeatService });
 
 const server = app.listen(PORT, () => {
   console.log(`[server] taiv fleet health server running on port ${PORT}`);
@@ -18,7 +35,7 @@ const server = app.listen(PORT, () => {
 function shutdown(signal: string): void {
   console.log(`[server] received ${signal}, shutting down gracefully`);
   server.close(() => {
-    closeDatabase();
+    closeDatabase(db);
     console.log('[server] shutdown complete');
     process.exit(0);
   });

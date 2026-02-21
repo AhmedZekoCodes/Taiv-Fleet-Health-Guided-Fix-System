@@ -3,7 +3,7 @@ these tests verify the no-render rule fires only when a device is online but not
 */
 
 import { NoRenderRule } from '../../rules/NoRenderRule';
-import { IncidentType } from '../../domain/enums';
+import { IncidentType, SeverityLevel } from '../../domain/enums';
 import {
   NO_RENDER_THRESHOLD_SECONDS,
   OFFLINE_THRESHOLD_SECONDS,
@@ -84,7 +84,7 @@ describe('NoRenderRule', () => {
 
   it('generates steps in sequential order', () => {
     const device = makeDevice();
-    const match = { type: IncidentType.NO_RENDER, summary: '', context: {} };
+    const match = { type: IncidentType.NO_RENDER, severity: SeverityLevel.HIGH, summary: '', context: {} };
     const steps = rule.buildTroubleshootingSteps(match, device);
     steps.forEach((step, i) => expect(step.order).toBe(i + 1));
   });

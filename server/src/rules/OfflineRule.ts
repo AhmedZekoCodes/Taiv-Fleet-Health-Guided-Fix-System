@@ -11,6 +11,7 @@ import { OFFLINE_THRESHOLD_SECONDS } from '../domain/constants';
 
 export class OfflineRule implements IncidentRule {
   readonly type = IncidentType.OFFLINE;
+  readonly severity = SeverityLevel.CRITICAL;
 
   evaluate(ctx: RuleEvaluationContext): RuleMatch | null {
     const { device, nowSeconds } = ctx;
@@ -23,6 +24,7 @@ export class OfflineRule implements IncidentRule {
 
     return {
       type: this.type,
+      severity: this.severity,
       summary: `Device "${device.label}" has not sent a heartbeat in ${secondsSinceHeartbeat} seconds.`,
       context: {
         lastHeartbeatAt: device.telemetry.lastHeartbeatAt,
@@ -70,6 +72,4 @@ export class OfflineRule implements IncidentRule {
     ];
   }
 
-  // expose the severity so callers can stamp the incident correctly
-  static readonly severity = SeverityLevel.CRITICAL;
 }
