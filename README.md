@@ -186,9 +186,6 @@ If you’d like a walkthrough or want to discuss design tradeoffs, I’d love to
 ---
 
 **Ahmed Abdelgalil**
-
-Email: ahmedozeko2@gmail.com
-
-GitHub: https://github.com/AhmedZekoCodes
-
-LinkedIn: https://linkedin.com/in/ahmedgalil
+* Email: ahmedozeko2@gmail.com
+* GitHub: https://github.com/AhmedZekoCodes
+* LinkedIn: https://linkedin.com/in/ahmedgalil
