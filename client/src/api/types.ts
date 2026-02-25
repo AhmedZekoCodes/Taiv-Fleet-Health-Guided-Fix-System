@@ -77,6 +77,14 @@ export interface TroubleshootingStep {
   requiresConfirmation: boolean;
 }
 
+// compact summary of outbox delivery state for one incident
+export interface NotificationStatusSummary {
+  total: number;
+  sent: number;
+  pending: number;
+  failed: number;
+}
+
 export interface Incident {
   id: string;
   deviceId: string;
@@ -90,4 +98,6 @@ export interface Incident {
   detectedAt: string;
   resolvedAt: string | null;
   updatedAt: string;
+  // present when the backend has notification tracking wired up
+  notificationStatus?: NotificationStatusSummary;
 }

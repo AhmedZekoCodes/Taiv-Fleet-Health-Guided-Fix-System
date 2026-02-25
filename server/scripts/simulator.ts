@@ -11,7 +11,11 @@ import { openDatabase, closeDatabase } from '../src/db/sqlite';
 import { runMigrations } from '../src/db/migrate';
 import { SqliteDeviceRepository } from '../src/repositories/sqlite/SqliteDeviceRepository';
 import { SqliteIncidentRepository } from '../src/repositories/sqlite/SqliteIncidentRepository';
+import { SqliteVenueContactRepository } from '../src/repositories/sqlite/SqliteVenueContactRepository';
+import { SqliteNotificationOutboxRepository } from '../src/repositories/sqlite/SqliteNotificationOutboxRepository';
 import { HeartbeatService } from '../src/services/HeartbeatService';
+import { NotificationService } from '../src/services/NotificationService';
+import { NotificationComposer } from '../src/services/NotificationComposer';
 import { createDefaultIncidentPipeline } from '../src/rules';
 import { RuleEngine } from '../src/rules/RuleEngine';
 import { TroubleshootingStepFactory } from '../src/services/TroubleshootingStepFactory';
@@ -165,8 +169,21 @@ async function runSimulation(): Promise<void> {
 
   const deviceRepo = new SqliteDeviceRepository(db);
   const incidentRepo = new SqliteIncidentRepository(db);
+  const contactRepo = new SqliteVenueContactRepository(db);
+  const outboxRepo = new SqliteNotificationOutboxRepository(db);
   const { ruleEngine, stepFactory } = createDefaultIncidentPipeline();
-  const heartbeatService = new HeartbeatService(deviceRepo, incidentRepo, ruleEngine, stepFactory);
+
+  // wire the notification service so incidents created by the simulator trigger outbox entries
+  const composer = new NotificationComposer();
+  const notificationService = new NotificationService(contactRepo, outboxRepo, composer);
+
+  const heartbeatService = new HeartbeatService(
+    deviceRepo,
+    incidentRepo,
+    ruleEngine,
+    stepFactory,
+    notificationService,
+  );
 
   // seed venues first — devices reference them via foreign key
   const venueIds = Array.from(

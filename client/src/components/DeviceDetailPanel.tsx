@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DeviceDetail, Incident } from '../api/types';
+import { DeviceDetail, Incident, NotificationStatusSummary } from '../api/types';
 import { GlassCard } from './ui/GlassCard';
 import { StatusBadge } from './ui/StatusBadge';
 import { TroubleshootingSteps } from './TroubleshootingSteps';
@@ -205,9 +205,7 @@ function IncidentCard({
     <GlassCard
       variant="default"
       className="overflow-hidden"
-      style={{
-        borderLeft: `2px solid rgba(112, 81, 245, ${accentOpacity})`,
-      }}
+      style={{ borderLeft: `2px solid rgba(112, 81, 245, ${accentOpacity})` }}
     >
       {/* incident header row — click to expand/collapse steps */}
       <button
@@ -240,8 +238,13 @@ function IncidentCard({
             {incident.summary}
           </p>
 
-          {/* when the incident was detected */}
+            {/* when the incident was detected */}
           <p className="mt-1 text-meta">detected {formatDateTime(incident.detectedAt)}</p>
+
+          {/* notification delivery status — only shown when outbox data is present */}
+          {incident.notificationStatus && incident.notificationStatus.total > 0 && (
+            <NotificationBadge status={incident.notificationStatus} />
+          )}
         </div>
 
         {/* expand / collapse chevron */}
@@ -267,5 +270,55 @@ function IncidentCard({
         </div>
       )}
     </GlassCard>
+  );
+}
+
+// ----------------------------------------------------------------
+// notification badge
+// ----------------------------------------------------------------
+
+// shows a compact one-line delivery status for the incident's outbox entries.
+// uses only opacity variants so no new colors are introduced.
+function NotificationBadge({
+  status,
+}: {
+  status: NotificationStatusSummary;
+}): React.ReactElement {
+  // rank states by severity: all-failed > any-failed > any-pending > all-sent
+  const allFailed = status.failed > 0 && status.failed === status.total;
+  const partialFailed = status.failed > 0 && status.sent > 0;
+  const anyPending = status.pending > 0;
+
+  const label = allFailed
+    ? 'Notification failed'
+    : partialFailed
+      ? 'Partially notified'
+      : anyPending
+        ? 'Notification pending'
+        : 'Venue notified';
+
+  // map state to a text opacity so the badge uses only the existing palette
+  const textClass = allFailed
+    ? 'text-white/40'
+    : partialFailed
+      ? 'text-white/50'
+      : anyPending
+        ? 'text-white/55'
+        : 'text-white/70';
+
+  return (
+    <span
+      className={`mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium ${textClass}`}
+    >
+      {/* small dot indicator — opacity encodes the state */}
+      <span
+        className="h-1 w-1 rounded-full bg-brand-primary flex-shrink-0"
+        style={{
+          opacity: allFailed ? 0.3 : partialFailed ? 0.45 : anyPending ? 0.6 : 0.9,
+        }}
+        aria-hidden="true"
+      />
+      {label}
+    </span>
   );
 }

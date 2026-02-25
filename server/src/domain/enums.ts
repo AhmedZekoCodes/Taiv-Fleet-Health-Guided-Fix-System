@@ -33,3 +33,16 @@ export enum IncidentStatus {
   RESOLVED = 'RESOLVED',
   ACKNOWLEDGED = 'ACKNOWLEDGED',
 }
+
+// the delivery channel used for a notification
+export enum NotificationChannel {
+  EMAIL = 'EMAIL',
+  SMS = 'SMS',
+}
+
+// lifecycle state of a notification outbox entry
+export enum NotificationStatus {
+  PENDING = 'PENDING',
+  SENT = 'SENT',
+  FAILED = 'FAILED',
+}

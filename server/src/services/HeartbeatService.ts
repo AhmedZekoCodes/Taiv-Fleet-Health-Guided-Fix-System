@@ -9,6 +9,7 @@ import { IIncidentRepository } from '../repositories/IIncidentRepository';
 import { RuleEngine } from '../rules/RuleEngine';
 import { RuleMatch } from '../rules/IncidentRule';
 import { TroubleshootingStepFactory } from './TroubleshootingStepFactory';
+import { INotificationService, NoOpNotificationService } from './INotificationService';
 import { HeartbeatDto } from '../controllers/dtos/HeartbeatDto';
 import { Device } from '../domain/Device';
 import { Incident } from '../domain/Incident';
@@ -27,6 +28,7 @@ export class HeartbeatService {
   private readonly incidentRepo: IIncidentRepository;
   private readonly ruleEngine: RuleEngine;
   private readonly stepFactory: TroubleshootingStepFactory;
+  private readonly notificationService: INotificationService;
   // the clock lets tests inject a fixed time without touching real time
   private readonly clock: () => number;
 
@@ -35,12 +37,15 @@ export class HeartbeatService {
     incidentRepo: IIncidentRepository,
     ruleEngine: RuleEngine,
     stepFactory: TroubleshootingStepFactory,
+    // defaults to no-op so existing tests and wiring that omit this still compile
+    notificationService: INotificationService = new NoOpNotificationService(),
     clock: () => number = () => Math.floor(Date.now() / 1000),
   ) {
     this.deviceRepo = deviceRepo;
     this.incidentRepo = incidentRepo;
     this.ruleEngine = ruleEngine;
     this.stepFactory = stepFactory;
+    this.notificationService = notificationService;
     this.clock = clock;
   }
 
@@ -112,6 +117,16 @@ export class HeartbeatService {
 
       this.incidentRepo.create(incident);
       newIncidents.push(incident);
+
+      // notify venue contacts after the incident is persisted so the id exists.
+      // wrapped in try-catch so a notification failure never breaks the heartbeat response.
+      // the outbox pattern decouples delivery from incident creation on purpose.
+      try {
+        this.notificationService.onIncidentCreated(incident);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[heartbeat] notification enqueue failed for incident ${incident.id}: ${msg}`);
+      }
     }
 
     return { device, newIncidents, resolvedIncidents };
